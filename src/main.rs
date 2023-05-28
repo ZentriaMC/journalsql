@@ -6,7 +6,6 @@ use anyhow::Context;
 use clickhouse::inserter::Inserter;
 use crossbeam_channel::{select, Receiver};
 use log::{debug, error, trace, warn};
-use parser::read_journal_entries;
 use row::LogRecordRow;
 use signal_hook::{consts::SIGINT, iterator::Signals};
 use time::OffsetDateTime;
@@ -17,7 +16,7 @@ mod parser;
 mod row;
 mod util;
 
-use journal::JournalEntry;
+use journal::{read_journal_entries, JournalEntry};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
