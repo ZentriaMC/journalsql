@@ -10,36 +10,30 @@ use serde::ser::SerializeMap;
 use serde::Serialize;
 
 use crate::metrics;
-use crate::parser::parse_journal_field;
+use crate::parser::{parse_journal_field, JournalFieldValue};
 use crate::util::measure;
 
-#[derive(Clone, Debug)]
-pub enum JournalFieldData {
-    UTF8(String),
-    Bytes(Vec<u8>),
-}
-
-impl From<&JournalFieldData> for String {
-    fn from(value: &JournalFieldData) -> Self {
+impl From<&JournalFieldValue> for String {
+    fn from(value: &JournalFieldValue) -> Self {
         match value {
-            JournalFieldData::UTF8(value) => value.clone(),
+            JournalFieldValue::UTF8(value) => value.clone(),
 
             #[cfg(feature = "bytes-as-base64")]
-            JournalFieldData::Bytes(value) => {
+            JournalFieldValue::Bytes(value) => {
                 let mut v = String::from("base64:");
                 v += b64.encode(value).as_str();
                 v
             }
 
             #[cfg(not(feature = "bytes-as-base64"))]
-            JournalFieldData::Bytes(value) => {
+            JournalFieldValue::Bytes(value) => {
                 String::from_utf8_lossy(&strip_ansi_escapes::strip(value)).to_string()
             }
         }
     }
 }
 
-impl Serialize for JournalFieldData {
+impl Serialize for JournalFieldValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -59,15 +53,9 @@ impl Serialize for JournalFieldData {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct JournalField {
-    pub key: String,
-    pub value: JournalFieldData,
-}
-
 #[derive(Debug)]
 pub struct JournalEntry {
-    pub(super) fields: HashMap<String, JournalFieldData, fnv::FnvBuildHasher>,
+    pub(super) fields: HashMap<String, JournalFieldValue, fnv::FnvBuildHasher>,
 }
 
 impl Serialize for JournalEntry {
@@ -86,11 +74,11 @@ impl Serialize for JournalEntry {
 }
 
 impl JournalEntry {
-    pub fn put(&mut self, key: String, value: JournalFieldData) -> bool {
+    pub fn put(&mut self, key: String, value: JournalFieldValue) -> bool {
         self.fields.insert(key, value).is_some()
     }
 
-    pub fn get<S: Into<String>>(&self, key: S) -> Option<&JournalFieldData> {
+    pub fn get<S: Into<String>>(&self, key: S) -> Option<&JournalFieldValue> {
         self.fields.get(&key.into())
     }
 
