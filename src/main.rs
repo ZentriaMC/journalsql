@@ -7,7 +7,7 @@ use clickhouse::inserter::Inserter;
 use crossbeam_channel::{select, Receiver};
 use log::{debug, error, trace, warn};
 use row::LogRecordRow;
-use signal_hook::{consts::SIGINT, iterator::Signals};
+use signal_hook::{consts::{SIGINT, SIGTERM}, iterator::Signals};
 use time::OffsetDateTime;
 
 mod journal;
@@ -32,7 +32,7 @@ async fn main() {
 fn sigint_notifier() -> Result<Receiver<()>, Error> {
     let (sender, receiver) = crossbeam_channel::bounded::<()>(32);
 
-    let mut signals = Signals::new([SIGINT])?;
+    let mut signals = Signals::new([SIGINT, SIGTERM])?;
 
     std::thread::spawn(move || {
         for sig in signals.forever() {
