@@ -6,17 +6,12 @@ use anyhow::Context;
 use clickhouse::inserter::Inserter;
 use crossbeam_channel::{select, Receiver};
 use log::{debug, error, trace, warn};
-use row::LogRecordRow;
 use signal_hook::{consts::{SIGINT, SIGTERM}, iterator::Signals};
 use time::OffsetDateTime;
 
-mod journal;
-mod metrics;
-mod parser;
-mod row;
-mod util;
-
-use journal::{read_journal_entries, JournalEntry};
+use journalsql::journal::{read_journal_entries, JournalEntry};
+use journalsql::metrics;
+use journalsql::row::LogRecordRow;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
