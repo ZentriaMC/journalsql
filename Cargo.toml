@@ -26,9 +26,16 @@ time = "0.3"
 tokio = { version = "1", features = ["net", "rt-multi-thread"] }
 thiserror = "1.0"
 
+[dev-dependencies]
+criterion = "0.5.1"
+
 [features]
 default = []
 bytes-as-base64 = ["dep:base64"]
 
 [profile.release]
 debug = true
+
+[[bench]]
+name = "entry_parsing"
+harness = false
