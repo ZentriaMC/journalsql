@@ -1,5 +1,5 @@
 use std::{collections::HashMap, num::ParseIntError};
-use std::io::Read;
+use tokio::io::{AsyncRead, AsyncReadExt};
 
 use log::{debug, trace};
 use serde::ser::SerializeMap;
@@ -95,13 +95,15 @@ pub enum JournalReadError {
 }
 
 pub async fn read_journal_entries(
-    mut reader: Box<impl std::io::Read + Send>,
+    reader: impl AsyncRead,
     sender: mpsc::Sender<JournalEntry>,
 ) -> Result<(), JournalReadError> {
     let mut current_entry = JournalEntry::default();
     let mut input = Vec::with_capacity(8192);
 
     const READ_STEP: usize = 1;
+
+    tokio::pin!(reader);
 
     loop {
         let (elapsed, parse_result) = measure(|| parse_journal_field(&input));
@@ -147,6 +149,7 @@ pub async fn read_journal_entries(
         reader.as_mut()
             .take(to_read as u64)
             .read_to_end(&mut input)
+            .await
             .map_err(JournalReadError::IOError)?;
 
         if input.is_empty() {

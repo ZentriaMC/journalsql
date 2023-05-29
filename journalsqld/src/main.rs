@@ -1,4 +1,3 @@
-use std::os::fd::{AsFd, AsRawFd, FromRawFd};
 use std::time::Duration;
 
 use anyhow::Context;
@@ -114,13 +113,9 @@ async fn entrypoint() -> Result<(), Error> {
     };
 
     let producer_fut = async move {
-        let stdin = {
-            let stdin = std::io::stdin().lock();
-            let fd = stdin.as_fd();
-            unsafe { std::fs::File::from_raw_fd(fd.as_raw_fd()) }
-        };
+        let stdin = tokio::io::stdin();
 
-        read_journal_entries(Box::new(stdin), entry_sender)
+        read_journal_entries(stdin, entry_sender)
             .await
             .context("failed to read entries")
     };
