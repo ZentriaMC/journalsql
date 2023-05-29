@@ -15,7 +15,6 @@ members = [
 anyhow = "1.0"
 base64 = { version = "0.21.0" }
 clickhouse = { version = "0.11.4", features = ["time"] }
-crossbeam-channel = "0.5"
 env_logger = "0.10"
 fnv = "1.0.3"
 lazy_static = "1.4.0"
@@ -29,7 +28,7 @@ signal-hook = "0.3"
 strip-ansi-escapes = { git = "https://github.com/luser/strip-ansi-escapes.git", rev = "a0a306ab6c5a76f269fea8659fdd736f1d2d56b9" }
 strum = { version = "0.24", features = ["derive"] }
 time = "0.3"
-tokio = { version = "1", features = ["net", "rt-multi-thread"] }
+tokio = { version = "1", features = ["net", "rt-multi-thread", "io-util", "io-std"] }
 thiserror = "1.0"
 
 [profile.release]

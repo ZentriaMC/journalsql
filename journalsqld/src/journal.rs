@@ -1,11 +1,11 @@
-use std::io::Read;
 use std::{collections::HashMap, num::ParseIntError};
+use std::io::Read;
 
-use crossbeam_channel::Sender;
 use log::{debug, trace};
 use serde::ser::SerializeMap;
 use serde::Serialize;
 use systemd_journal_parser::{parse_journal_field, JournalFieldValue};
+use tokio::sync::mpsc;
 
 use crate::metrics;
 use crate::util::measure;
@@ -94,9 +94,9 @@ pub enum JournalReadError {
     ParseError(nom::error::ErrorKind, Vec<u8>),
 }
 
-pub fn read_journal_entries(
-    reader: &mut (dyn std::io::Read),
-    sender: Sender<JournalEntry>,
+pub async fn read_journal_entries(
+    mut reader: Box<impl std::io::Read + Send>,
+    sender: mpsc::Sender<JournalEntry>,
 ) -> Result<(), JournalReadError> {
     let mut current_entry = JournalEntry::default();
     let mut input = Vec::with_capacity(8192);
@@ -125,7 +125,7 @@ pub fn read_journal_entries(
                 if e.code == nom::error::ErrorKind::Eof {
                     // If we've hit an eof and have only newline in the buffer, then it's end of the journal entry
                     if input.len() == 1 && input[0] == b'\n' {
-                        if let Err(err) = sender.send(current_entry) {
+                        if let Err(err) = sender.send(current_entry).await {
                             debug!("producer channel closed: {:?}", err);
                             break;
                         }
@@ -144,7 +144,7 @@ pub fn read_journal_entries(
             }
         };
 
-        reader
+        reader.as_mut()
             .take(to_read as u64)
             .read_to_end(&mut input)
             .map_err(JournalReadError::IOError)?;

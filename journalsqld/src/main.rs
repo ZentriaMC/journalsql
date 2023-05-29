@@ -1,14 +1,13 @@
 use std::os::fd::{AsFd, AsRawFd, FromRawFd};
-
 use std::time::Duration;
 
 use anyhow::Context;
 use clickhouse::inserter::Inserter;
-use crossbeam_channel::{select, Receiver};
 use log::{debug, error, trace, warn};
 use row::LogRecordRow;
 use signal_hook::{consts::{SIGINT, SIGTERM}, iterator::Signals};
 use time::OffsetDateTime;
+use tokio::sync::{broadcast, mpsc};
 
 mod journal;
 mod metrics;
@@ -28,17 +27,16 @@ async fn main() {
     }
 }
 
-fn sigint_notifier() -> Result<Receiver<()>, Error> {
-    let (sender, receiver) = crossbeam_channel::bounded::<()>(32);
+fn sigint_notifier() -> Result<broadcast::Receiver<()>, Error> {
+    let (sender, receiver) = broadcast::channel::<()>(1);
 
     let mut signals = Signals::new([SIGINT, SIGTERM])?;
 
     std::thread::spawn(move || {
         for sig in signals.forever() {
             debug!("got signal {}", sig);
-            if sender.send(()).is_err() {
-                break;
-            }
+            sender.send(()).expect("failed to send");
+            break;
         }
     });
 
@@ -56,26 +54,25 @@ async fn entrypoint() -> Result<(), Error> {
         .with_max_entries(100_000)
         .with_period(Some(Duration::from_secs(5)));
 
-    // let sigint_ch = sigint_notifier()?;
+    let mut sigint_ch = sigint_notifier()?;
     let machines = 1;
     let (entry_sender, entry_receiver) =
-        crossbeam_channel::bounded::<JournalEntry>(4 * num_cpus::get() * machines);
+        mpsc::channel::<JournalEntry>(4 * num_cpus::get() * machines);
 
     let consumer_fut = async move {
-        let receiver = entry_receiver;
+        let mut receiver = entry_receiver;
 
         'the_loop: loop {
-            select! {
-                // TODO: async is hard, logs_inserter.insert starts complaining
-                // recv(sigint_ch) -> _ => {
-                //     break 'the_loop;
-                // },
+            tokio::select! {
+                _ = sigint_ch.recv() => {
+                    break 'the_loop;
+                },
 
-                recv(receiver) -> entry => {
+                entry = receiver.recv() => {
                     let entry = match entry {
-                        Ok(entry) => entry,
-                        Err(err) => {
-                            trace!("channel recv err: {:?}", err);
+                        Some(entry) => entry,
+                        None => {
+                            trace!("we done");
                             break;
                         },
                     };
@@ -117,12 +114,15 @@ async fn entrypoint() -> Result<(), Error> {
     };
 
     let producer_fut = async move {
-        // Use raw fd for input to avoid expensive buffering until next newline
-        let stdin = std::io::stdin().lock();
-        let fd = stdin.as_fd();
-        let mut file = unsafe { std::fs::File::from_raw_fd(fd.as_raw_fd()) };
+        let stdin = {
+            let stdin = std::io::stdin().lock();
+            let fd = stdin.as_fd();
+            unsafe { std::fs::File::from_raw_fd(fd.as_raw_fd()) }
+        };
 
-        read_journal_entries(&mut file, entry_sender).context("failed to read entries")
+        read_journal_entries(Box::new(stdin), entry_sender)
+            .await
+            .context("failed to read entries")
     };
 
     let consumer = tokio::task::spawn(consumer_fut);
