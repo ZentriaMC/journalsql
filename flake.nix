@@ -29,12 +29,7 @@
           ];
         };
 
-        rust = pkgs.rust-bin.stable.latest.default.override {
-          extensions = [
-            "rust-analyzer"
-            "rust-src"
-          ];
-        };
+        rust = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
 
         mkShell = pkgs.callPackage clean-devshell.lib.mkDevShell { };
       in
