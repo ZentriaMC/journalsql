@@ -43,11 +43,11 @@ impl RowCreateError {
 
 #[derive(Serialize, Row)]
 pub struct LogRecordRow {
-    // systemd timestamps are in microseconds
-    #[serde(with = "clickhouse::serde::time::datetime64::micros")]
-    pub timestamp: time::OffsetDateTime,
     pub machine_id: String,
     pub boot_id: String,
+    // systemd timestamps are in microseconds
+    #[serde(with = "clickhouse::serde::time::datetime64::micros")]
+    pub timestamp: time::OffsetDateTime,   
     pub hostname: String,
     pub transport: String,
     // Map(String, String)
@@ -103,8 +103,8 @@ impl TryFrom<&JournalEntry> for LogRecordRow {
         }
 
         Ok(LogRecordRow {
-            timestamp,
             machine_id,
+            timestamp,
             boot_id,
             hostname,
             transport,
