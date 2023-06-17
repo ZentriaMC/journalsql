@@ -1,0 +1,15 @@
+[package]
+name = "systemd_journal_parser"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+base64 = { workspace = true, optional = true }
+nom.workspace = true
+serde = { workspace = true, optional = true }
+strip-ansi-escapes.workspace = true
+
+[features]
+default = ["serde"]
+bytes-as-base64 = ["dep:base64"]
+serde = ["dep:serde"]

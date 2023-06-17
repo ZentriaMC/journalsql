@@ -8,50 +8,10 @@ use crossbeam_channel::Sender;
 use log::{debug, trace};
 use serde::ser::SerializeMap;
 use serde::Serialize;
+use systemd_journal_parser::{parse_journal_field, JournalFieldValue};
 
 use crate::metrics;
-use crate::parser::{parse_journal_field, JournalFieldValue};
 use crate::util::measure;
-
-impl From<&JournalFieldValue> for String {
-    fn from(value: &JournalFieldValue) -> Self {
-        match value {
-            JournalFieldValue::UTF8(value) => value.clone(),
-
-            #[cfg(feature = "bytes-as-base64")]
-            JournalFieldValue::Bytes(value) => {
-                let mut v = String::from("base64:");
-                v += b64.encode(value).as_str();
-                v
-            }
-
-            #[cfg(not(feature = "bytes-as-base64"))]
-            JournalFieldValue::Bytes(value) => {
-                String::from_utf8_lossy(&strip_ansi_escapes::strip(value)).to_string()
-            }
-        }
-    }
-}
-
-impl Serialize for JournalFieldValue {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        match self {
-            Self::UTF8(value) => serializer.serialize_str(value),
-
-            #[cfg(feature = "bytes-as-base64")]
-            Self::Bytes(value) => {
-                let encoded = b64.encode(value);
-                serializer.serialize_str(&encoded)
-            }
-
-            #[cfg(not(feature = "bytes-as-base64"))]
-            Self::Bytes(value) => serializer.collect_seq(value.iter().map(|b| i32::from(*b))),
-        }
-    }
-}
 
 #[derive(Debug)]
 pub struct JournalEntry {

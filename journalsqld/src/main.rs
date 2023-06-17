@@ -12,7 +12,6 @@ use time::OffsetDateTime;
 
 mod journal;
 mod metrics;
-mod parser;
 mod row;
 mod util;
 
