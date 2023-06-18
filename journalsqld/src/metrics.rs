@@ -7,7 +7,7 @@ use prometheus::{
     IntGaugeVec,
 };
 
-pub const LABEL_HOSTNAME: &'static str = "hostname";
+pub const LABEL_HOSTNAME: &str = "hostname";
 
 lazy_static! {
     pub static ref LOG_ENTRIES_PROCESSED: IntCounterVec = register_int_counter_vec!(

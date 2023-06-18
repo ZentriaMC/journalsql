@@ -5,7 +5,10 @@ use anyhow::Context;
 use clickhouse::inserter::Inserter;
 use log::{debug, error, trace, warn};
 use row::LogRecordRow;
-use signal_hook::{consts::{SIGINT, SIGTERM}, iterator::Signals};
+use signal_hook::{
+    consts::{SIGINT, SIGTERM},
+    iterator::Signals,
+};
 use time::OffsetDateTime;
 use tokio::sync::{broadcast, mpsc};
 
@@ -33,10 +36,9 @@ fn sigint_notifier() -> Result<broadcast::Receiver<()>, Error> {
     let mut signals = Signals::new([SIGINT, SIGTERM])?;
 
     std::thread::spawn(move || {
-        for sig in signals.forever() {
+        if let Some(sig) = signals.forever().next() {
             debug!("got signal {}", sig);
             sender.send(()).expect("failed to send");
-            break;
         }
     });
 

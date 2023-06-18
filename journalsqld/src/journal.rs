@@ -1,5 +1,5 @@
-use std::{collections::HashMap, num::ParseIntError};
 use std::io::Read;
+use std::{collections::HashMap, num::ParseIntError};
 
 use log::{debug, trace};
 use serde::ser::SerializeMap;
@@ -58,22 +58,20 @@ impl JournalEntry {
     pub fn realtime_timestamp(&self) -> Option<Result<time::OffsetDateTime, ParseIntError>> {
         let micros = self
             .get("__REALTIME_TIMESTAMP")
-            .map(|field| String::from(field))
+            .map(String::from)
             .map(|value| value.parse::<i128>());
 
-        if micros.is_none() {
-            return None;
-        }
+        micros.as_ref()?;
 
         let micros = micros.unwrap();
-        if micros.is_err() {
-            return Some(Err(micros.unwrap_err()));
+        if let Err(err) = micros {
+            return Some(Err(err));
         }
 
         let micros = micros.unwrap();
         let value = time::OffsetDateTime::from_unix_timestamp_nanos(micros * 1000).unwrap();
 
-        return Some(Ok(value));
+        Some(Ok(value))
     }
 }
 
@@ -144,7 +142,8 @@ pub async fn read_journal_entries(
             }
         };
 
-        reader.as_mut()
+        reader
+            .as_mut()
             .take(to_read as u64)
             .read_to_end(&mut input)
             .map_err(JournalReadError::IOError)?;

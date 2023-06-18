@@ -47,7 +47,7 @@ pub struct LogRecordRow {
     pub boot_id: String,
     // systemd timestamps are in microseconds
     #[serde(with = "clickhouse::serde::time::datetime64::micros")]
-    pub timestamp: time::OffsetDateTime,   
+    pub timestamp: time::OffsetDateTime,
     pub hostname: String,
     pub transport: String,
     // Map(String, String)
