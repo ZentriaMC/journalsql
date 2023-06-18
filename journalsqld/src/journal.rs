@@ -1,9 +1,6 @@
 use std::io::Read;
 use std::{collections::HashMap, num::ParseIntError};
 
-#[cfg(feature = "bytes-as-base64")]
-use base64::{engine::general_purpose::STANDARD as b64, Engine};
-
 use crossbeam_channel::Sender;
 use log::{debug, trace};
 use serde::ser::SerializeMap;
