@@ -25,3 +25,7 @@ tokio.workspace = true
 thiserror.workspace = true
 
 systemd_journal_parser = { path = "../parser" }
+
+[features]
+defaults = []
+bytes-as-base64 = ["systemd_journal_parser/bytes-as-base64"]
