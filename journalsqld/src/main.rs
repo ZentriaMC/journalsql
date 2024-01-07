@@ -1,7 +1,9 @@
 use std::os::fd::{AsFd, AsRawFd, FromRawFd};
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Context;
+use checkpoint::Checkpointer;
 use clickhouse::inserter::Inserter;
 use log::{debug, error, trace, warn};
 use row::LogRecordRow;
@@ -12,6 +14,7 @@ use signal_hook::{
 use time::OffsetDateTime;
 use tokio::sync::{broadcast, mpsc};
 
+mod checkpoint;
 mod journal;
 mod metrics;
 mod row;
@@ -61,6 +64,9 @@ async fn entrypoint() -> Result<(), Error> {
     let (entry_sender, entry_receiver) =
         mpsc::channel::<JournalEntry>(4 * num_cpus::get() * machines);
 
+    let checkpointer = Arc::new(Checkpointer::new("./checkpoint.txt").await?);
+
+    let consumer_checkpointer = Arc::clone(&checkpointer);
     let consumer_fut = async move {
         let mut receiver = entry_receiver;
 
@@ -104,6 +110,7 @@ async fn entrypoint() -> Result<(), Error> {
 
                     if res.entries > 0 {
                         debug!("inserted={} txns={}", res.entries, res.transactions);
+                        consumer_checkpointer.set(&row.cursor).await.unwrap();
                     }
                 },
             }
@@ -114,6 +121,8 @@ async fn entrypoint() -> Result<(), Error> {
             .await
             .context("failed to end logs inserter")
     };
+
+    debug!("checkpoint={:?}", checkpointer.get().await?);
 
     let producer_fut = async move {
         let stdin = {

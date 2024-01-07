@@ -162,3 +162,4 @@ tramp
 !.env.example
 
 # Project specific files
+/checkpoint.txt
