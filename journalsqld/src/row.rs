@@ -15,7 +15,8 @@ lazy_static! {
         ignored_fields.insert("_HOSTNAME");
         ignored_fields.insert("_MACHINE_ID");
         ignored_fields.insert("_TRANSPORT");
-        // ignored_fields.insert("__CURSOR"); // TODO: to avoid duplicate rows?
+        // NOTE: not serialized in row struct, expose it in record Map column
+        // ignored_fields.insert("__CURSOR");
         ignored_fields.insert("__REALTIME_TIMESTAMP");
 
         ignored_fields
@@ -52,6 +53,8 @@ pub struct LogRecordRow {
     pub transport: String,
     // Map(String, String)
     pub record: Vec<(String, String)>,
+    #[serde(skip)]
+    pub cursor: String,
 }
 
 impl TryFrom<&JournalEntry> for LogRecordRow {
@@ -85,6 +88,11 @@ impl TryFrom<&JournalEntry> for LogRecordRow {
             .map_err(|_e| RowCreateError::missing_field("__REALTIME_TIMESTAMP"))?
             .map_err(|e| RowCreateError::Unspecified(e.into()))?;
 
+        let cursor = value
+            .cursor()
+            .context("no cursor supplied")
+            .map_err(|_e| RowCreateError::missing_field("__CURSOR"))?;
+
         if log::log_enabled!(log::Level::Trace) {
             trace!(
                 "entry: {}",
@@ -109,6 +117,7 @@ impl TryFrom<&JournalEntry> for LogRecordRow {
             hostname,
             transport,
             record,
+            cursor,
         })
     }
 }

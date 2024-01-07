@@ -73,6 +73,10 @@ impl JournalEntry {
 
         Some(Ok(value))
     }
+
+    pub fn cursor(&self) -> Option<String> {
+        self.get("__CURSOR").map(|field| field.into())
+    }
 }
 
 impl Default for JournalEntry {
