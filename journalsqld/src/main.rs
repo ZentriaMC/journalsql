@@ -47,7 +47,7 @@ fn sigint_notifier() -> Result<broadcast::Receiver<()>, Error> {
 }
 
 fn create_client(uri: &str) -> Result<clickhouse::Client, url::ParseError> {
-    let uri: Url = uri.parse()?;
+    let mut uri: Url = uri.parse()?;
     let mut client = clickhouse::Client::default().with_compression(clickhouse::Compression::Lz4);
 
     if uri.username() != "" {
@@ -65,7 +65,6 @@ fn create_client(uri: &str) -> Result<clickhouse::Client, url::ParseError> {
             .unwrap_or("default"),
     );
 
-    let mut uri = uri.clone();
     let _ = uri.set_username("");
     let _ = uri.set_password(None);
     uri.set_path("/");
