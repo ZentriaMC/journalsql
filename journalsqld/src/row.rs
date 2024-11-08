@@ -18,6 +18,11 @@ lazy_static! {
         ignored_fields.insert("__CURSOR");
         ignored_fields.insert("__REALTIME_TIMESTAMP");
 
+        // These fields are in __CURSOR
+        ignored_fields.insert("__SEQNUM");
+        ignored_fields.insert("__SEQNUM_ID");
+        ignored_fields.insert("__MONOTONIC_TIMESTAMP");
+
         ignored_fields
     };
 }
