@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use anyhow::Context;
 use clickhouse::inserter::Inserter;
-use log::{debug, error, trace, warn};
+use log::{debug, error, info, trace};
 use row::LogRecordRow;
 use signal_hook::{
     consts::{SIGINT, SIGTERM},
@@ -11,13 +11,14 @@ use signal_hook::{
 };
 use time::OffsetDateTime;
 use tokio::sync::{broadcast, mpsc};
+use url::Url;
 
 mod journal;
 mod metrics;
 mod row;
 mod util;
 
-use journal::{read_journal_entries, JournalEntry};
+use crate::journal::{read_journal_entries, JournalEntry};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
@@ -45,11 +46,37 @@ fn sigint_notifier() -> Result<broadcast::Receiver<()>, Error> {
     Ok(receiver)
 }
 
+fn create_client(uri: &str) -> Result<clickhouse::Client, url::ParseError> {
+    let uri: Url = uri.parse()?;
+    let mut client = clickhouse::Client::default().with_compression(clickhouse::Compression::Lz4);
+
+    if uri.username() != "" {
+        client = client.with_user(uri.username());
+    }
+
+    if let Some(password) = uri.password() {
+        client = client.with_password(password);
+    }
+
+    client = client.with_database(
+        uri.path()
+            .strip_prefix('/')
+            .filter(|path| !path.is_empty())
+            .unwrap_or("default"),
+    );
+
+    let mut uri = uri.clone();
+    let _ = uri.set_username("");
+    let _ = uri.set_password(None);
+    uri.set_path("/");
+
+    client = client.with_url(uri.to_string());
+    Ok(client)
+}
+
 async fn entrypoint() -> Result<(), Error> {
-    let db = clickhouse::Client::default()
-        .with_compression(clickhouse::Compression::Lz4)
-        .with_database("default")
-        .with_url("http://127.0.0.1:18123");
+    let clickhouse_uri = std::env::var("CLICKHOUSE_URI").expect("CLICKHOUSE_URI envvar is not set");
+    let db = create_client(&clickhouse_uri)?;
 
     let mut logs_inserter: Inserter<LogRecordRow> = db
         .inserter("logs2")?
@@ -91,19 +118,18 @@ async fn entrypoint() -> Result<(), Error> {
 
                     metrics::inc_log_entries_processed(&row.hostname).unwrap();
                     metrics::set_last_received_entry_timestamp(&row.hostname, &row.timestamp).unwrap();
-
-                    // TODO: this sucks
                     let ts_diff = current_timestamp - row.timestamp;
-                    if ts_diff.is_positive() && ts_diff.whole_seconds() > 5 {
-                        warn!("LAG! unable to keep up - recv diff: {}", ts_diff);
-                    }
 
                     // Insert
                     logs_inserter.write(&row).await?;
                     let res = logs_inserter.commit().await?;
 
                     if res.entries > 0 {
-                        debug!("inserted={} txns={}", res.entries, res.transactions);
+                        if ts_diff.is_positive() && ts_diff.whole_seconds() > 5 {
+                            info!("inserted={} txns={} behind={}", res.entries, res.transactions, ts_diff);
+                        } else {
+                            info!("inserted={} txns={}", res.entries, res.transactions);
+                        }
                     }
                 },
             }

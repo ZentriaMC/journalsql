@@ -24,6 +24,7 @@ tokio.workspace = true
 thiserror.workspace = true
 
 systemd_journal_parser = { path = "../parser" }
+url = "2.5.3"
 
 [features]
 defaults = []
