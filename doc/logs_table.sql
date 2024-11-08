@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS logs2 (
     `timestamp` DateTime64(6) CODEC(DoubleDelta, ZSTD),
     `hostname` LowCardinality(String),
     `transport` LowCardinality(String),
+    `cursor` String CODEC(LZ4),
     `record` Map(LowCardinality(String), String)
 )
 ENGINE = MergeTree
