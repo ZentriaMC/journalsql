@@ -35,32 +35,16 @@ impl JournalEntry {
         self.fields.insert(key, value).is_some()
     }
 
-    pub fn transport(&self) -> Option<String> {
-        self.fields.get("_TRANSPORT").map(|field| field.into())
-    }
-
     pub fn take_transport(&mut self) -> Option<String> {
         self.fields.remove("_TRANSPORT").map(|field| field.into())
-    }
-
-    pub fn hostname(&self) -> Option<String> {
-        self.fields.get("_HOSTNAME").map(|field| field.into())
     }
 
     pub fn take_hostname(&mut self) -> Option<String> {
         self.fields.remove("_HOSTNAME").map(|field| field.into())
     }
 
-    pub fn machine_id(&self) -> Option<String> {
-        self.fields.get("_MACHINE_ID").map(|field| field.into())
-    }
-
     pub fn take_machine_id(&mut self) -> Option<String> {
         self.fields.remove("_MACHINE_ID").map(|field| field.into())
-    }
-
-    pub fn boot_id(&self) -> Option<String> {
-        self.fields.get("_BOOT_ID").map(|field| field.into())
     }
 
     pub fn take_boot_id(&mut self) -> Option<String> {
@@ -75,22 +59,12 @@ impl JournalEntry {
         Ok(time::OffsetDateTime::from_unix_timestamp_nanos(micros * 1000).unwrap())
     }
 
-    pub fn realtime_timestamp(&self) -> Option<Result<time::OffsetDateTime, ParseIntError>> {
-        self.fields
-            .get("__REALTIME_TIMESTAMP")
-            .map(Self::parse_realtime_timerstamp)
-    }
-
     pub fn take_realtime_timestamp(
         &mut self,
     ) -> Option<Result<time::OffsetDateTime, ParseIntError>> {
         self.fields
-                .remove("__REALTIME_TIMESTAMP")
-                .map(|v| Self::parse_realtime_timerstamp(&v))
-    }
-
-    pub fn cursor(&self) -> Option<String> {
-        self.fields.get("__CURSOR").map(|field| field.into())
+            .remove("__REALTIME_TIMESTAMP")
+            .map(|v| Self::parse_realtime_timerstamp(&v))
     }
 
     pub fn take_cursor(&mut self) -> Option<String> {
