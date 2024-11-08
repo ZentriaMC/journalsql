@@ -106,7 +106,7 @@ async fn entrypoint() -> Result<(), Error> {
                     };
 
                     let current_timestamp = OffsetDateTime::now_utc();
-                    let row = match LogRecordRow::try_from(&entry) {
+                    let row = match LogRecordRow::try_from(entry) {
                         Ok(row) => row,
                         Err(err) => {
                             error!("failed to produce row: {}", err);

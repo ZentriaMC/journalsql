@@ -43,6 +43,26 @@ impl From<&JournalFieldValue> for String {
     }
 }
 
+impl From<JournalFieldValue> for String {
+    fn from(value: JournalFieldValue) -> Self {
+        match value {
+            JournalFieldValue::UTF8(value) => value,
+
+            #[cfg(feature = "bytes-as-base64")]
+            JournalFieldValue::Bytes(value) => {
+                let mut v = String::from("base64:");
+                v += b64.encode(value).as_str();
+                v
+            }
+
+            #[cfg(not(feature = "bytes-as-base64"))]
+            JournalFieldValue::Bytes(value) => {
+                String::from_utf8_lossy(&strip_ansi_escapes::strip(value)).to_string()
+            }
+        }
+    }
+}
+
 #[cfg(feature = "serde")]
 impl serde::Serialize for JournalFieldValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

@@ -60,57 +60,57 @@ pub struct LogRecordRow {
     pub record: Vec<(String, String)>,
 }
 
-impl TryFrom<&JournalEntry> for LogRecordRow {
+impl TryFrom<JournalEntry> for LogRecordRow {
     type Error = RowCreateError;
 
-    fn try_from(value: &JournalEntry) -> Result<Self, Self::Error> {
+    fn try_from(mut value: JournalEntry) -> Result<Self, Self::Error> {
         // Grab common fields
         let transport = value
-            .transport()
+            .take_transport()
             .context("no transport supplied")
             .map_err(|_e| RowCreateError::missing_field("_TRANSPORT"))?;
 
         let machine_id = value
-            .machine_id()
+            .take_machine_id()
             .context("no machine id supplied")
             .map_err(|_e| RowCreateError::missing_field("_MACHINE_ID"))?;
 
         let boot_id = value
-            .boot_id()
+            .take_boot_id()
             .context("no boot id supplied")
             .map_err(|_e| RowCreateError::missing_field("_BOOT_ID"))?;
 
         let hostname = value
-            .hostname()
+            .take_hostname()
             .context("no hostname supplied")
             .map_err(|_e| RowCreateError::missing_field("_HOSTNAME"))?;
 
         let timestamp = value
-            .realtime_timestamp()
+            .take_realtime_timestamp()
             .context("no timestamp supplied")
             .map_err(|_e| RowCreateError::missing_field("__REALTIME_TIMESTAMP"))?
             .map_err(|e| RowCreateError::Unspecified(e.into()))?;
 
         let cursor = value
-            .cursor()
+            .take_cursor()
             .context("no cursor supplied")
             .map_err(|_e| RowCreateError::missing_field("__CURSOR"))?;
 
         if log::log_enabled!(log::Level::Trace) {
             trace!(
                 "entry: {}",
-                serde_json::to_string_pretty(value)
+                serde_json::to_string_pretty(&value)
                     .map_err(|e| RowCreateError::Unspecified(e.into()))?
             );
         }
 
         let mut record: Vec<(String, String)> = Vec::with_capacity(value.fields.len());
-        for (key, field) in value.fields.iter() {
+        for (key, field) in value.fields.into_iter() {
             if INSERT_IGNORED_FIELDS.contains(key.as_str()) {
                 continue;
             }
 
-            record.push((key.clone(), field.into()));
+            record.push((key, field.into()));
         }
 
         Ok(LogRecordRow {

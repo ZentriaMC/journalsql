@@ -35,47 +35,66 @@ impl JournalEntry {
         self.fields.insert(key, value).is_some()
     }
 
-    pub fn get<S: Into<String>>(&self, key: S) -> Option<&JournalFieldValue> {
-        self.fields.get(&key.into())
+    pub fn transport(&self) -> Option<String> {
+        self.fields.get("_TRANSPORT").map(|field| field.into())
     }
 
-    pub fn transport(&self) -> Option<String> {
-        self.get("_TRANSPORT").map(|field| field.into())
+    pub fn take_transport(&mut self) -> Option<String> {
+        self.fields.remove("_TRANSPORT").map(|field| field.into())
     }
 
     pub fn hostname(&self) -> Option<String> {
-        self.get("_HOSTNAME").map(|field| field.into())
+        self.fields.get("_HOSTNAME").map(|field| field.into())
+    }
+
+    pub fn take_hostname(&mut self) -> Option<String> {
+        self.fields.remove("_HOSTNAME").map(|field| field.into())
     }
 
     pub fn machine_id(&self) -> Option<String> {
-        self.get("_MACHINE_ID").map(|field| field.into())
+        self.fields.get("_MACHINE_ID").map(|field| field.into())
+    }
+
+    pub fn take_machine_id(&mut self) -> Option<String> {
+        self.fields.remove("_MACHINE_ID").map(|field| field.into())
     }
 
     pub fn boot_id(&self) -> Option<String> {
-        self.get("_BOOT_ID").map(|field| field.into())
+        self.fields.get("_BOOT_ID").map(|field| field.into())
+    }
+
+    pub fn take_boot_id(&mut self) -> Option<String> {
+        self.fields.remove("_BOOT_ID").map(|field| field.into())
+    }
+
+    fn parse_realtime_timerstamp(
+        entry: &JournalFieldValue,
+    ) -> Result<time::OffsetDateTime, ParseIntError> {
+        let micros = String::from(entry).parse::<i128>()?;
+
+        Ok(time::OffsetDateTime::from_unix_timestamp_nanos(micros * 1000).unwrap())
     }
 
     pub fn realtime_timestamp(&self) -> Option<Result<time::OffsetDateTime, ParseIntError>> {
-        let micros = self
+        self.fields
             .get("__REALTIME_TIMESTAMP")
-            .map(String::from)
-            .map(|value| value.parse::<i128>());
+            .map(Self::parse_realtime_timerstamp)
+    }
 
-        micros.as_ref()?;
-
-        let micros = micros.unwrap();
-        if let Err(err) = micros {
-            return Some(Err(err));
-        }
-
-        let micros = micros.unwrap();
-        let value = time::OffsetDateTime::from_unix_timestamp_nanos(micros * 1000).unwrap();
-
-        Some(Ok(value))
+    pub fn take_realtime_timestamp(
+        &mut self,
+    ) -> Option<Result<time::OffsetDateTime, ParseIntError>> {
+        self.fields
+                .remove("__REALTIME_TIMESTAMP")
+                .map(|v| Self::parse_realtime_timerstamp(&v))
     }
 
     pub fn cursor(&self) -> Option<String> {
-        self.get("__CURSOR").map(|field| field.into())
+        self.fields.get("__CURSOR").map(|field| field.into())
+    }
+
+    pub fn take_cursor(&mut self) -> Option<String> {
+        self.fields.remove("__CURSOR").map(|field| field.into())
     }
 }
 
